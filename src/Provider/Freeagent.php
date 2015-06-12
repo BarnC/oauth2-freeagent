@@ -41,9 +41,26 @@ class FreeAgent extends AbstractProvider
         return $this->baseURL . 'company';
     }
 
-    public function urlCreateContact()
+    public function urlContacts()
     {
         return $this->baseURL . 'contacts';
+    }
+
+    public function urlInvoices()
+    {
+        return $this->baseURL . 'invoices';
+    }
+
+    public function emailInvoice(AccessToken $token, $invoiceId, Array $data)
+    {
+        $url = implode('/', [
+            $this->urlInvoices(),
+            $invoiceId,
+            'send_email'
+            ]);
+
+        $headers = $this->getHeaders($token);
+        $this->sendProviderData($url, $headers, $data);
     }
 
     public function userDetails($response, AccessToken $token)
@@ -55,21 +72,32 @@ class FreeAgent extends AbstractProvider
 
     public function createContact(AccessToken $token, Array $data)
     {
-        $url = $this->urlCreateContact($token);
+        $url = $this->urlContacts($token);
         $headers = $this->getHeaders($token);
-        $contact = (array)(json_decode($this->sendProviderData($url, $headers, $data))->contact);
-        // Free agent doesn't return the id as its own field, so we parse it out of the URL which IS supplied.. Thanks Freeagent.
-        $contact['id'] = explode('/contacts/', $contact['url'])[1];
+
+        $response = $this->sendProviderData($url, $headers, json_encode($data));
+        $contact = (array)(json_decode($response)->contact);
         return $contact;
+    }
+
+    public function createInvoice(AccessToken $token, Array $data)
+    {
+        $url = $this->urlInvoices();
+        $headers = $this->getHeaders($token);
+        $headers['content-type'] =  'application/json';
+        $response = $this->sendProviderData($url, $headers, json_encode($data));
+        $invoice = (array)(json_decode($response)->invoice);
+        return $invoice;
     }
 
     protected function sendProviderData($url, array $headers = [], $data)
     {
         try {
             $client = $this->getHttpClient();
-            $request = $client->post($this->urlCreateContact(), $headers, $data);
+            $request = $client->post($url, $headers, $data);
             $response = $request->send()->getBody();
-        } catch (BadResponseException $e) {
+        } catch (\Exception $e) {
+            die((new \Symfony\Component\Debug\ExceptionHandler(true))->createResponse($e));
             // @codeCoverageIgnoreStart
             $response = $e->getResponse()->getBody();
             $result = $this->prepareResponse($response);
