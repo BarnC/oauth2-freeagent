@@ -4,6 +4,8 @@ namespace CloudManaged\OAuth2\Client\Provider;
 
 use CloudManaged\OAuth2\Client\Entity\Company;
 use Guzzle\Http\Exception\BadResponseException;
+use Guzzle\Http\Message\PostFile;
+use Guzzle\Stream\Stream;
 use League\OAuth2\Client\Exception\IDPException;
 use League\OAuth2\Client\Provider\AbstractProvider;
 use League\OAuth2\Client\Token\AccessToken;
@@ -51,13 +53,19 @@ class FreeAgent extends AbstractProvider
         return $this->baseURL . 'invoices';
     }
 
+    public function urlBankTransactions()
+    {
+        return $this->baseURL . 'bank_transactions';
+    }
+
+    public function urlBankTransactionExplanations()
+    {
+        return $this->baseURL . '/bank_transaction_explanations';
+    }
+
     public function emailInvoice(AccessToken $token, $invoiceId, Array $data)
     {
-        $url = implode('/', [
-            $this->urlInvoices(),
-            $invoiceId,
-            'send_email'
-            ]);
+        $url = $this->urlInvoices() . '/' . $invoiceId . '/send_email';
 
         $headers = $this->getHeaders($token);
         $this->sendProviderData($url, $headers, $data);
@@ -75,7 +83,7 @@ class FreeAgent extends AbstractProvider
         $url = $this->urlContacts($token);
         $headers = $this->getHeaders($token);
 
-        $response = $this->sendProviderData($url, $headers, json_encode($data));
+        $response = $this->sendProviderData($url, $headers, $data);
         $contact = (array)(json_decode($response)->contact);
         return $contact;
     }
@@ -90,18 +98,45 @@ class FreeAgent extends AbstractProvider
         return $invoice;
     }
 
+    public function uploadBankTransaction(AccessToken $token, $accountId, $csv)
+    {
+        $url = $this->urlBankTransactions() . '/statement?bank_account=' . $accountId;
+
+        $data = [
+            'statement' => "@$csv"
+        ];
+
+        $headers = $this->getHeaders($token);
+        $response = $this->sendProviderData($url, $headers, $data);
+    }
+
+    protected function getUnexplainedTransactions(AccessToken $token, $accountId)
+    {
+        $url = $this->urlBankTransactions() . '?bank_account=' . $accountId . '&view=unexplained';
+        $headers = $this->getHeaders($token);
+        $response = $this->fetchProviderData($url, $headers);
+        return (array)(json_decode($response)->bank_transactions);
+    }
+
+    public function createBankTransactionExplanation(AccessToken $token, $data)
+    {
+        $url = $this->urlBankTransactionExplanations();
+        $headers = $this->getHeaders($token);
+        $response = $this->sendProviderData($url, $headers, json_encode($data));
+    }
+
     protected function sendProviderData($url, array $headers = [], $data)
     {
         try {
             $client = $this->getHttpClient();
             $request = $client->post($url, $headers, $data);
             $response = $request->send()->getBody();
-        } catch (\Exception $e) {
-            die((new \Symfony\Component\Debug\ExceptionHandler(true))->createResponse($e));
+        } catch (BadResponseException $e) {
+
             // @codeCoverageIgnoreStart
             $response = $e->getResponse()->getBody();
             $result = $this->prepareResponse($response);
-            throw new IDPException($result);
+            throw new \Exception($result['errors']['error']['message']);
             // @codeCoverageIgnoreEnd
         }
 
