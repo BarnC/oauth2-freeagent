@@ -60,7 +60,7 @@ class FreeAgent extends AbstractProvider
 
     public function urlBankTransactionExplanations()
     {
-        return $this->baseURL . '/bank_transaction_explanations';
+        return $this->baseURL . 'bank_transaction_explanations';
     }
 
     public function emailInvoice(AccessToken $token, $invoiceId, Array $data)
@@ -122,7 +122,7 @@ class FreeAgent extends AbstractProvider
     {
         $url = $this->urlBankTransactionExplanations();
         $headers = $this->getHeaders($token);
-        $response = $this->sendProviderData($url, $headers, json_encode($data));
+        $response = $this->sendProviderData($url, $headers, $data);
     }
 
     protected function sendProviderData($url, array $headers = [], $data)
@@ -132,7 +132,6 @@ class FreeAgent extends AbstractProvider
             $request = $client->post($url, $headers, $data);
             $response = $request->send()->getBody();
         } catch (BadResponseException $e) {
-
             // @codeCoverageIgnoreStart
             $response = $e->getResponse()->getBody();
             $result = $this->prepareResponse($response);
