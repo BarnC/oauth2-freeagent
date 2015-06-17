@@ -88,6 +88,15 @@ class FreeAgent extends AbstractProvider
         return $contact;
     }
 
+    public function getInvoice(AccessToken $token, $invoiceId)
+    {
+        $url = $this->urlInvoices() . '/' . $invoiceId;
+        $headers = $this->getHeaders($token);
+        $response = $this->fetchProviderData($url, $headers);
+        $invoice = (array)(json_decode($response)->invoice);
+        return $invoice;
+    }
+
     public function createInvoice(AccessToken $token, Array $data)
     {
         $url = $this->urlInvoices();
@@ -138,7 +147,6 @@ class FreeAgent extends AbstractProvider
             throw new \Exception($result['errors']['error']['message']);
             // @codeCoverageIgnoreEnd
         }
-
         return $response;
     }
 }
