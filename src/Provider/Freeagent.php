@@ -66,7 +66,6 @@ class FreeAgent extends AbstractProvider
     public function emailInvoice(AccessToken $token, $invoiceId, Array $data)
     {
         $url = $this->urlInvoices() . '/' . $invoiceId . '/send_email';
-
         $headers = $this->getHeaders($token);
         $this->sendProviderData($url, $headers, $data);
     }
@@ -144,7 +143,11 @@ class FreeAgent extends AbstractProvider
             // @codeCoverageIgnoreStart
             $response = $e->getResponse()->getBody();
             $result = $this->prepareResponse($response);
-            throw new \Exception($result['errors']['error']['message']);
+            if (isset($result['errors']['error']['message'])) {
+                throw new \Exception($result['errors']['error']['message']);
+            } else {
+                throw $e;
+            }
             // @codeCoverageIgnoreEnd
         }
         return $response;
