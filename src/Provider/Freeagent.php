@@ -96,6 +96,15 @@ class FreeAgent extends AbstractProvider
         return $invoice;
     }
 
+    public function getInvoicePdf(AccessToken $token, $invoiceId)
+    {
+        $url = $this->urlInvoices() . '/' . $invoiceId . "/pdf";
+        $headers = $this->getHeaders($token);
+        $response = $this->fetchProviderData($url, $headers);
+        $invoice = (array)(json_decode($response)->pdf);
+        return $invoice;
+    }
+
     public function createInvoice(AccessToken $token, Array $data)
     {
         $url = $this->urlInvoices();
